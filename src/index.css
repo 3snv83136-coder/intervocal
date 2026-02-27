@@ -1,0 +1,85 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --a4-width: 210mm;
+    --a4-height: 297mm;
+    --font-body: 'Inter', sans-serif;
+    --font-heading: 'Plus Jakarta Sans', sans-serif;
+}
+
+body {
+    font-family: var(--font-body);
+    @apply bg-slate-100 text-slate-800;
+}
+
+.dark body {
+    @apply bg-slate-900 text-slate-200;
+}
+
+.page-a4 {
+    width: var(--a4-width);
+    min-height: calc(var(--a4-height) - 1px);
+    padding: 20mm;
+    margin: 0 auto 20px auto;
+    @apply bg-white shadow-lg shadow-slate-200/50 border border-slate-200;
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.dark .page-a4 {
+    @apply bg-slate-800 shadow-black/20 border-slate-700;
+}
+
+@media print {
+    body { background: white; }
+    .no-print { display: none !important; }
+    .page-a4 {
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-after: always !important;
+        break-after: page !important;
+    }
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+}
+
+.no-cut {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+}
+
+.font-heading { font-family: var(--font-heading); }
+.font-body { font-family: var(--font-body); }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #e2e8f0; }
+::-webkit-scrollbar-thumb { background: #004a99; border-radius: 10px; border: 2px solid #e2e8f0; }
+
+/* Styles for PDF rendering to make it more compact */
+.pdf-render .page-a4 {
+    border: none;
+    box-shadow: none;
+}
+.pdf-render .text-3xl { font-size: 28px; }
+.pdf-render .text-2xl { font-size: 22px; }
+.pdf-render .text-lg { font-size: 16px; }
+.pdf-render .text-sm { font-size: 10px; }
+.pdf-render .text-xs { font-size: 8px; }
+.pdf-render .text-\[11px\] { font-size: 9px; line-height: 1.4; }
+.pdf-render .text-\[10px\] { font-size: 8px; line-height: 1.4; }
+.pdf-render .text-\[9px\] { font-size: 7px; line-height: 1.4; }
+.pdf-render .p-6 { padding: 18px; }
+.pdf-render .p-5 { padding: 16px; }
+.pdf-render .p-4 { padding: 12px; }
+.pdf-render .mb-6 { margin-bottom: 16px; }
+.pdf-render .mb-8 { margin-bottom: 24px; }
+.pdf-render .gap-6 { gap: 18px; }
+.pdf-render td, .pdf-render th { padding: 8px; }

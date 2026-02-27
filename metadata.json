@@ -1,0 +1,7 @@
+{
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "name": "DébouchePro - Générateur de Rapports",
+  "description": ""
+}
