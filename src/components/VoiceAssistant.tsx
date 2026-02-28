@@ -69,7 +69,8 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataGenerated, onProc
 
       if (!response.ok) {
         const errBody = await response.json().catch(() => ({}));
-        throw new Error((errBody as { error?: string }).error || 'Le traitement vocal a échoué.');
+        const msg = (errBody as { error?: string }).error || 'Le traitement vocal a échoué.';
+        throw new Error(msg);
       }
 
       const generatedData = await response.json();
@@ -97,9 +98,10 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataGenerated, onProc
       }
 
       onDataGenerated(generatedData as ReportData);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erreur de traitement AI:", err);
-      alert("Le traitement vocal a échoué. Assurez-vous de bien décrire les étapes de l'intervention.");
+      const msg = err?.message || "Le traitement vocal a échoué. Assurez-vous de bien décrire les étapes de l'intervention.";
+      alert(msg);
     } finally {
       onProcessingStateChange(false);
     }

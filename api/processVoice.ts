@@ -23,12 +23,17 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const chunks: Uint8Array[] = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
+    let body: { base64Audio?: string };
+    if (req.body && typeof req.body === "object" && "base64Audio" in req.body) {
+      body = req.body as { base64Audio?: string };
+    } else {
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of req) {
+        chunks.push(chunk);
+      }
+      const bodyString = Buffer.concat(chunks).toString("utf8") || "{}";
+      body = JSON.parse(bodyString);
     }
-    const bodyString = Buffer.concat(chunks).toString("utf8") || "{}";
-    const body = JSON.parse(bodyString);
 
     const base64Audio = body?.base64Audio;
     if (!base64Audio) {
@@ -43,9 +48,15 @@ export default async function handler(req: any, res: any) {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [
+    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+    let lastError: unknown;
+    let response: { text?: string };
+
+    for (const model of modelsToTry) {
+      try {
+        response = await ai.models.generateContent({
+          model,
+          contents: [
         {
           parts: [
             {
@@ -59,10 +70,10 @@ export default async function handler(req: any, res: any) {
             },
           ],
         },
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
+          ],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
           type: Type.OBJECT,
           properties: {
             rawTranscription: { type: Type.STRING, description: "La transcription intégrale de l'audio" },
@@ -132,9 +143,19 @@ export default async function handler(req: any, res: any) {
             },
           },
           required: ["rawTranscription", "client", "adresse", "typeIntervention", "investigations", "avisTechnique", "phase1", "phase2", "preconisations", "garantie", "estimate"],
-        },
-      },
-    });
+            },
+          },
+        });
+        break;
+      } catch (err) {
+        lastError = err;
+        continue;
+      }
+    }
+
+    if (!response) {
+      throw lastError ?? new Error("Aucun modèle Gemini n'a répondu.");
+    }
 
     const textOutput = (response as any).text || "{}";
     const generatedData = JSON.parse(textOutput);
@@ -142,9 +163,13 @@ export default async function handler(req: any, res: any) {
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     return res.end(JSON.stringify(generatedData));
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erreur processVoice API:", error);
+    const message =
+      process.env.GEMINI_API_KEY
+        ? (error?.message || String(error)) || "Le traitement vocal a échoué."
+        : "Clé API manquante : ajoutez GEMINI_API_KEY dans les variables d'environnement Vercel (Production et Preview).";
     res.statusCode = 500;
-    return res.end(JSON.stringify({ error: "Le traitement vocal a échoué." }));
+    return res.end(JSON.stringify({ error: message }));
   }
 }
