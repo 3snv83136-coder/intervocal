@@ -1,7 +1,6 @@
 
 
 import React, { useState, useRef } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { ReportData, EstimateData } from '../types';
 
 interface VoiceAssistantProps {
@@ -62,113 +61,18 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataGenerated, onProc
     onProcessingStateChange(true);
     try {
       const base64Audio = await blobToBase64(audioBlob);
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [
-          {
-            parts: [
-              {
-                inlineData: {
-                  mimeType: 'audio/webm',
-                  data: base64Audio,
-                },
-              },
-              {
-                text: `Tu es un expert en débouchage de canalisations. Analyse cet enregistrement d'une intervention.
-                
-                TA MISSION :
-                1. TRANSCRIPTION : Transcris fidèlement et intégralement tout ce qui est dit dans l'audio.
-                2. COMPILATION : Extrais les informations pour remplir le rapport structuré ci-dessous.
-                
-                CONSIGNES DE COMPILATION :
-                - Identifie le client, l'adresse et le type d'intervention.
-                - Détaille la Phase 1 (Débouchage) et la Phase 2 (Inspection).
-                - Pour chaque anomalie citée (ex: coudes à 90°, racines, cassure), crée une entrée dans 'investigations'.
-                - Identifie si l'intervention est sous garantie.
-                - Si des réparations sont nécessaires, génère des lignes de devis claires dans l'objet 'estimate'.
-                - Utilise un ton technique et professionnel pour les champs structurés.
-                
-                IMPORTANT : Ne te soucie pas du texte existant, base-toi uniquement sur cet audio pour générer un nouveau rapport complet.`,
-              },
-            ],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              rawTranscription: { type: Type.STRING, description: "La transcription intégrale de l'audio" },
-              client: { type: Type.STRING },
-              chantier: { type: Type.STRING },
-              adresse: { type: Type.STRING },
-              date: { type: Type.STRING, description: "Date formatée en français" },
-              typeIntervention: { type: Type.STRING, enum: ["Dépannage", "Curage", "Inspection", "Maintenance", "Raccordement", "Autre"] },
-              intervenant: { type: Type.STRING },
-              objet: { type: Type.STRING },
-              zoneIntervention: { type: Type.STRING },
-              configuration: { type: Type.STRING },
-              phase1: {
-                type: Type.OBJECT,
-                properties: { title: { type: Type.STRING }, context: { type: Type.STRING }, action: { type: Type.STRING }, constat: { type: Type.STRING } },
-                required: ["title", "context", "action", "constat"]
-              },
-              phase2: {
-                type: Type.OBJECT,
-                properties: { title: { type: Type.STRING }, context: { type: Type.STRING }, action: { type: Type.STRING }, constatsList: { type: Type.ARRAY, items: { type: Type.STRING } } },
-                required: ["title", "context", "action", "constatsList"]
-              },
-              avisTechnique: {
-                type: Type.OBJECT,
-                properties: { title: { type: Type.STRING }, description: { type: Type.STRING }, diagnosticFinal: { type: Type.STRING }, recommandation: { type: Type.STRING } },
-                required: ["title", "description", "diagnosticFinal", "recommandation"]
-              },
-              investigations: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    defect: { type: Type.STRING },
-                    location: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    diagnostic: { type: Type.STRING, enum: ["FONCTIONNEL", "À REMPLACER", "OBSERVATION"] },
-                  },
-                  required: ["id", "defect", "location", "description", "diagnostic"]
-                }
-              },
-              preconisations: {
-                type: Type.OBJECT,
-                properties: { rectification: { type: Type.ARRAY, items: { type: Type.STRING } }, maintenance: { type: Type.ARRAY, items: { type: Type.STRING } } },
-                required: ["rectification", "maintenance"]
-              },
-              garantie: { type: Type.BOOLEAN },
-              estimate: {
-                type: Type.OBJECT,
-                properties: {
-                  lineItems: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        id: { type: Type.STRING }, description: { type: Type.STRING }, quantity: { type: Type.NUMBER }, unitPrice: { type: Type.NUMBER }, total: { type: Type.NUMBER }
-                      },
-                      required: ["id", "description", "quantity", "unitPrice", "total"]
-                    }
-                  }
-                },
-                required: ["lineItems"]
-              }
-            },
-            required: ["rawTranscription", "client", "adresse", "typeIntervention", "investigations", "avisTechnique", "phase1", "phase2", "preconisations", "garantie", "estimate"]
-          }
-        }
+      const response = await fetch('/api/processVoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64Audio }),
       });
 
-      const textOutput = response.text || "{}";
-      const generatedData = JSON.parse(textOutput);
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error((errBody as { error?: string }).error || 'Le traitement vocal a échoué.');
+      }
+
+      const generatedData = await response.json();
       
       if (generatedData.investigations) {
         generatedData.investigations = generatedData.investigations.map((inv: any, idx: number) => ({ ...inv, id: String(Date.now() + idx) }));
