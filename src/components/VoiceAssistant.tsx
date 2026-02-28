@@ -68,8 +68,15 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataGenerated, onProc
       });
 
       if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        const msg = (errBody as { error?: string }).error || 'Le traitement vocal a échoué.';
+        const text = await response.text();
+        let msg = 'Le traitement vocal a échoué.';
+        try {
+          const errBody = JSON.parse(text) as { error?: string };
+          if (errBody?.error) msg = errBody.error;
+        } catch {
+          if (response.status === 404) msg = 'Route API introuvable. Vérifiez le déploiement.';
+          else if (response.status >= 500) msg = 'Erreur serveur. Vérifiez que GEMINI_API_KEY est définie sur Vercel.';
+        }
         throw new Error(msg);
       }
 
@@ -100,7 +107,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onDataGenerated, onProc
       onDataGenerated(generatedData as ReportData);
     } catch (err: any) {
       console.error("Erreur de traitement AI:", err);
-      const msg = err?.message || "Le traitement vocal a échoué. Assurez-vous de bien décrire les étapes de l'intervention.";
+      const msg = err?.message || "Le traitement vocal a échoué. Vérifiez la clé Gemini sur Vercel et réessayez.";
       alert(msg);
     } finally {
       onProcessingStateChange(false);
