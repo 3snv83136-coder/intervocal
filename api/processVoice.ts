@@ -48,7 +48,8 @@ export default async function handler(req: any, res: any) {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+    // Modèles supportés pour generateContent + audio (v1beta) : éviter gemini-1.5-pro (404)
+    const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b"];
     let lastError: unknown;
     let response: { text?: string };
 
